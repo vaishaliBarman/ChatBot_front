@@ -1,74 +1,116 @@
-import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
-import "./App.css"; // Make sure to create this file
+import React, { useState } from 'react';
+import axios from 'axios';
 
 function App() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef(null);
+  const [message, setMessage] = useState('');
+  const [chat, setChat] = useState([]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!message.trim()) return;
 
-    const userMsg = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+    // Add user's message
+    setChat(prev => [...prev, { sender: 'user', text: message }]);
 
     try {
-      const response = await axios.post("http://localhost:5000/api/chat", {
-        message: input,
-
-      });
-      console.log(response.data);
-      const botMsg = { role: "bot", content: response.data.reply };
-      setMessages((prev) => [...prev, botMsg]);
-    } catch (error) {
-      const errorMsg = {
-        role: "bot",
-        content: "सर्वर से कनेक्शन में त्रुटि। कृपया पुनः प्रयास करें।",
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      const res = await axios.post('http://localhost:5000/chat', { message });
+      setChat(prev => [
+        ...prev,
+        { sender: 'user', text: message },
+        { sender: 'bot', text: res.data.reply },
+      ]);
+    } catch (err) {
+      setChat(prev => [
+        ...prev,
+        { sender: 'user', text: message },
+        { sender: 'bot', text: '❌ Error: ' + err.message },
+      ]);
     }
-  };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      sendMessage();
-    }
+    setMessage('');
   };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   return (
-    <div className="chat-container">
-      <div className="chat-header">🎓 Moodle ChatBot</div>
+    <div style={styles.container}>
+      <h1 style={styles.header}>🧠 Gemini ChatBot</h1>
 
-      <div className="chat-box">
-        {messages.map((msg, idx) => (
+      <div style={styles.chatBox}>
+        {chat.map((msg, index) => (
           <div
-            key={idx}
-            className={`chat-bubble ${msg.role === "user" ? "user" : "bot"}`}
+            key={index}
+            style={{
+              ...styles.message,
+              alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+              backgroundColor: msg.sender === 'user' ? '#DCF8C6' : '#ECECEC',
+            }}
           >
-            {msg.content}
+            <strong>{msg.sender === 'user' ? 'You' : 'Bot'}:</strong> {msg.text}
           </div>
         ))}
-        <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input-area">
+      <div style={styles.inputArea}>
         <input
+          style={styles.input}
           type="text"
-          placeholder="अपना सवाल पूछें..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyPress}
+          value={message}
+          placeholder="Type your message..."
+          onChange={e => setMessage(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
         />
-        <button onClick={sendMessage}>📤 भेजें</button>
+        <button style={styles.button} onClick={sendMessage}>Send</button>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    maxWidth: '600px',
+    margin: 'auto',
+    padding: '1rem',
+    fontFamily: 'Arial, sans-serif',
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '1rem',
+  },
+  chatBox: {
+    height: '400px',
+    overflowY: 'scroll',
+    border: '1px solid #ccc',
+    borderRadius: '10px',
+    padding: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    backgroundColor: '#F9F9F9',
+  },
+  message: {
+    padding: '10px 15px',
+    borderRadius: '20px',
+    maxWidth: '75%',
+    wordBreak: 'break-word',
+  },
+  inputArea: {
+    marginTop: '1rem',
+    display: 'flex',
+    gap: '10px',
+  },
+  input: {
+    flex: 1,
+    padding: '10px',
+    fontSize: '16px',
+    borderRadius: '10px',
+    border: '1px solid #ccc',
+  },
+  button: {
+    padding: '10px 20px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    cursor: 'pointer',
+  },
+};
 
 export default App;
